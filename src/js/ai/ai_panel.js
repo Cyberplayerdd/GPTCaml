@@ -144,6 +144,57 @@ window.GPTCAML = window.GPTCAML || {};
         toast("Applied - press Ctrl+Z to undo.");
     }
 
+    /**
+     * One click, no ceremony: build the prompt for the action chosen in the AI
+     * settings and hand it straight to the configured assistant. The panel
+     * still opens behind it, ready for the answer to be pasted back.
+     */
+    function quick_ask() {
+        var prefs = NS.settings.all();
+        open(prefs.action);
+        if (state.prompt && prefs.autolaunch) send(prefs.provider);
+    }
+
+    /* ---- settings ------------------------------------------------------- */
+
+    var SETTING_FIELDS = {
+        "ai-set-provider": "provider",
+        "ai-set-action": "action",
+        "ai-set-level": "level",
+        "ai-set-language": "language",
+        "ai-set-extra": "extra",
+        "ai-set-autolaunch": "autolaunch"
+    };
+
+    function load_settings_ui() {
+        Object.keys(SETTING_FIELDS).forEach(function (id) {
+            var el = $(id);
+            if (!el) return;
+            var value = NS.settings.get(SETTING_FIELDS[id]);
+            if (el.type === "checkbox") el.checked = !!value;
+            else el.value = value;
+        });
+        describe_quick_button();
+    }
+
+    function save_setting(id) {
+        var el = $(id);
+        if (!el) return;
+        NS.settings.set(SETTING_FIELDS[id], el.type === "checkbox" ? el.checked : el.value);
+        describe_quick_button();
+    }
+
+    /** Keep the lightbulb's tooltip honest about what it will do. */
+    function describe_quick_button() {
+        var button = $("ai-nav-button");
+        if (!button) return;
+        var prefs = NS.settings.all();
+        var provider = NS.providers.list[prefs.provider];
+        button.title = INTENT_LABEL[prefs.action] +
+            (prefs.autolaunch && provider ? " with " + provider.label : " (prepare the prompt)") +
+            " - Ctrl+Shift+E";
+    }
+
     /* ---- the "an error just happened" chip ------------------------------ */
 
     function show_chip() {
@@ -182,6 +233,13 @@ window.GPTCAML = window.GPTCAML || {};
         var question = $("ai-question");
         if (question) question.addEventListener("change", refresh);
 
+        Object.keys(SETTING_FIELDS).forEach(function (id) {
+            var el = $(id);
+            if (!el) return;
+            el.addEventListener("change", function () { save_setting(id); });
+        });
+        load_settings_ui();
+
         // parsing straight after a paste saves a click
         var answer = $("ai-answer");
         if (answer) answer.addEventListener("paste", function () { setTimeout(parse, 0); });
@@ -189,12 +247,13 @@ window.GPTCAML = window.GPTCAML || {};
         hide_chip();
     }
 
-    NS.ai = {open: open, parse: parse, apply: apply, init: init};
+    NS.ai = {open: open, quick_ask: quick_ask, parse: parse, apply: apply, init: init};
 
     document.addEventListener("DOMContentLoaded", init);
 })(window.GPTCAML);
 
 /* Called from the editor keymap and the nav bar. */
-function ai_explain_last_error() { window.GPTCAML.ai.open("explain"); }
+function ai_quick_ask() { window.GPTCAML.ai.quick_ask(); }
+function ai_explain_last_error() { window.GPTCAML.ai.quick_ask(); }
 function ai_fix_last_error() { window.GPTCAML.ai.open("fix"); }
 function ai_ask_about_selection() { window.GPTCAML.ai.open("ask"); }

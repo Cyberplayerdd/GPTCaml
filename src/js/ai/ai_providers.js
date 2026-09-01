@@ -47,16 +47,18 @@ window.GPTCAML = window.GPTCAML || {};
             send: function (prompt) {
                 var short = prompt.length <= URL_PREFILL_LIMIT;
                 var url = short ? base + "?" + query_param + "=" + encodeURIComponent(prompt) : base;
+                // opened synchronously: waiting for the clipboard promise first
+                // loses the user gesture and the popup blocker eats the tab
+                var opened = window.open(url, "_blank", "noopener");
                 return copy(prompt).then(function () {
-                    window.open(url, "_blank", "noopener");
                     return {
                         ok: true,
-                        note: short
-                            ? "Prompt copied and pre-filled in " + label + ". If the box is empty, just paste (Ctrl+V)."
-                            : "Prompt copied - it is too long to pre-fill, so paste it (Ctrl+V) into " + label + "."
+                        note: (opened ? "" : "Your browser blocked the new tab - open " + label + " yourself. ") +
+                            (short
+                                ? "Prompt copied and pre-filled. If the box is empty, just paste (Ctrl+V)."
+                                : "Prompt copied - it is too long to pre-fill, so paste it (Ctrl+V) into " + label + ".")
                     };
                 }, function () {
-                    window.open(url, "_blank", "noopener");
                     return {
                         ok: false,
                         note: "Could not reach the clipboard - copy the prompt above manually."

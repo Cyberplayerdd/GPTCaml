@@ -37,7 +37,10 @@ window.GPTCAML = window.GPTCAML || {};
      * @return {string}
      */
     function build(intent, ctx) {
-        var out = [header(ctx), ""];
+        var out = [header(ctx)];
+        var prefs = (NS.settings && NS.settings.preferences_text()) || "";
+        if (prefs) out.push(prefs);
+        out.push("");
 
         if (intent === "ask") {
             out.push("Here is my file `" + ctx.name + "`:", "", fence(ctx.code), "");
