@@ -184,9 +184,24 @@ window.GPTCAML = window.GPTCAML || {};
 
     var BLOCK_START = /^(let|type|exception|module|open|include|external|class|val)\b/;
 
+    /* `struct`, `sig`, `object` and `begin` open a body that runs to its `end`.
+     * Without tracking that, a module whose contents are written flush against
+     * the left margin - which is exactly what beginner OCaml looks like - gets
+     * shredded into one "top-level definition" per line. */
+    var OPENS = /\b(struct|sig|object|begin)\b/g;
+    var CLOSES = /\bend\b/g;
+
+    function nesting_delta(line) {
+        var bare = line.replace(/\(\*[^*]*\*\)/g, " ").replace(/"[^"]*"/g, '""');
+        return (bare.match(OPENS) || []).length - (bare.match(CLOSES) || []).length;
+    }
+
     /** A stable identity for a top-level definition, e.g. "let ajouter_fin". */
     function block_key(line) {
-        var m = line.match(/^let\s+(?:rec\s+)?([A-Za-z_][\w']*|\(\s*\))/);
+        var m = line.match(/^(module|class)\s+type\s+([A-Za-z_][\w'.]*)/);
+        if (m) return m[1] + " type " + m[2];
+        // operators count: `let ( +: ) a b` must survive a reformat of the spaces
+        m = line.match(/^let\s+(?:rec\s+)?(\([^)]*\)|[A-Za-z_][\w']*)/);
         if (m) return "let " + m[1].replace(/\s+/g, "");
         m = line.match(/^type\s+(?:\([^)]*\)\s+|(?:'[A-Za-z_][\w']*\s+)*)?([A-Za-z_][\w']*)/);
         if (m) return "type " + m[1];
@@ -197,16 +212,16 @@ window.GPTCAML = window.GPTCAML || {};
 
     /**
      * Cut a file into top-level definitions. A line starting at column 0 with a
-     * definition keyword opens a block; `and` continues the one before it, and
-     * indented lines belong to whatever is open.
+     * definition keyword opens a block; `and`, indented lines, and anything
+     * inside an unclosed struct/sig/object/begin belong to whatever is open.
      * @return {Array<{key: string, first: number, lines: Array<string>}>}
      */
     function split_blocks(text) {
         var lines = text.replace(/\r\n/g, "\n").split("\n");
-        var blocks = [], current = null, seen = {};
+        var blocks = [], current = null, seen = {}, depth = 0;
 
         lines.forEach(function (line, i) {
-            if (BLOCK_START.test(line)) {
+            if (depth <= 0 && BLOCK_START.test(line)) {
                 if (current) blocks.push(current);
                 var key = block_key(line);
                 seen[key] = (seen[key] || 0) + 1;
@@ -215,6 +230,8 @@ window.GPTCAML = window.GPTCAML || {};
             }
             if (!current) current = {key: "(preamble)", first: i, lines: []};
             current.lines.push(line);
+            depth += nesting_delta(line);
+            if (depth < 0) depth = 0;
         });
         if (current) blocks.push(current);
         return blocks;
