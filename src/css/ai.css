@@ -241,3 +241,125 @@
 .ai-paste-btn:hover { opacity: 1; }
 
 .ai-paste-btn .material-icons { font-size: 1.1rem; }
+
+/* Proposed changes pane, to the left of the editor */
+.diff-box {
+    flex-direction: column;
+    /* two columns of code need room; below this the pane scrolls sideways
+       rather than being squeezed into uselessness */
+    min-width: 240px;
+    white-space: normal;
+    overflow: hidden;
+}
+
+#ai-diff-pane {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    background: var(--toplevel-bg-color);
+}
+
+#ai-diff-pane-head {
+    display: flex;
+    align-items: center;
+    gap: .6em;
+    padding: .4em .7em;
+    background: var(--nav-bg-color);
+    border-bottom: 1px solid var(--help-margin-color);
+    font-size: .82rem;
+    color: var(--ui-text-color);
+    flex: 0 0 auto;
+}
+
+#ai-diff-pane-stats {
+    color: var(--code-string);
+    font-family: monospace;
+}
+
+.ai-diff-pane-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: .3em;
+}
+
+.ai-diff-pane-actions .btn-small {
+    height: 2em;
+    line-height: 2em;
+    padding: 0 .8em;
+    font-size: .75rem;
+}
+
+.ai-diff-pane-actions #ai-pane-apply { background-color: var(--action-button); }
+.ai-diff-pane-actions .material-icons { font-size: 1rem; line-height: 2em; }
+
+#ai-diff-pane-body {
+    flex: 1 1 auto;
+    overflow: auto;
+}
+
+/* Side-by-side rows: current on the left, proposed on the right */
+.ai-split {
+    font-family: monospace;
+    font-size: .78rem;
+    min-width: min-content;
+}
+
+.ai-split-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.ai-split-head {
+    position: sticky;
+    top: 0;
+    background: var(--nav-selected-tab-bg-color);
+    color: var(--nav-unselected-tab-text-color);
+    font-family: inherit;
+    z-index: 1;
+}
+
+.ai-split-head .ai-split-cell { padding: .25em .6em; }
+
+.ai-split-cell {
+    display: flex;
+    gap: .5em;
+    padding: 0 .4em;
+    white-space: pre;
+    overflow: hidden;
+    border-right: 1px solid var(--help-margin-color);
+}
+
+.ai-split-num {
+    flex: 0 0 2.5em;
+    text-align: right;
+    color: var(--editor-gutter-text-color);
+    user-select: none;
+}
+
+.ai-split-text { flex: 1 1 auto; }
+
+.ai-split-ctx .ai-split-cell { color: var(--nav-unselected-tab-text-color); }
+.ai-split-change .ai-split-left,
+.ai-split-del .ai-split-left { background: rgba(217, 83, 79, .16); color: var(--code-error); }
+.ai-split-change .ai-split-right,
+.ai-split-add .ai-split-right { background: rgba(195, 232, 141, .14); color: var(--code-string); }
+.ai-split-blank { background: rgba(255, 255, 255, .03); }
+
+.ai-split-gap {
+    display: block;
+    padding: .25em .8em;
+    color: var(--code-caml);
+    background: rgba(255, 255, 255, .04);
+}
+
+/* Side by side is the point of this view, so the columns stay put and the
+   pane scrolls horizontally instead of collapsing. Only on a genuinely tiny
+   screen does stacking beat scrolling. */
+#ai-diff-pane-body { overflow: auto; }
+
+@media (max-width: 420px) {
+    .ai-split-row { grid-template-columns: 1fr; }
+    .ai-split-blank { display: none; }
+}

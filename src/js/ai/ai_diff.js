@@ -101,5 +101,106 @@ window.GPTCAML = window.GPTCAML || {};
         return {node: pre, stats: st};
     }
 
-    NS.diff = {diff: diff, render: render, stats: stats};
+
+    /**
+     * Pair the unified rows into side-by-side ones: a run of deletions and the
+     * run of additions that replaced it line up index by index, so a changed
+     * line sits opposite the line it changed from instead of underneath it.
+     */
+    function pair(rows) {
+        var out = [], dels = [], adds = [];
+
+        function flush() {
+            var n = Math.max(dels.length, adds.length);
+            for (var i = 0; i < n; i++) {
+                out.push({
+                    left: dels[i] || null,
+                    right: adds[i] || null,
+                    type: (dels[i] && adds[i]) ? "change" : (dels[i] ? "del" : "add")
+                });
+            }
+            dels = [];
+            adds = [];
+        }
+
+        rows.forEach(function (r) {
+            if (r.type === "del") { dels.push(r); return; }
+            if (r.type === "add") { adds.push(r); return; }
+            flush();
+            out.push({left: r, right: r, type: "ctx"});
+        });
+        flush();
+        return out;
+    }
+
+    function collapse_pairs(pairs) {
+        var keep = new Array(pairs.length);
+        pairs.forEach(function (p, i) {
+            if (p.type === "ctx") return;
+            for (var k = Math.max(0, i - CONTEXT); k <= Math.min(pairs.length - 1, i + CONTEXT); k++) keep[k] = true;
+        });
+        var out = [], skipped = 0;
+        pairs.forEach(function (p, i) {
+            if (keep[i]) {
+                if (skipped) { out.push({type: "gap", skipped: skipped}); skipped = 0; }
+                out.push(p);
+            } else {
+                skipped++;
+            }
+        });
+        if (skipped) out.push({type: "gap", skipped: skipped});
+        return out;
+    }
+
+    function cell(row, side) {
+        var div = document.createElement("div");
+        div.className = "ai-split-cell ai-split-" + side;
+        if (!row) {
+            div.classList.add("ai-split-blank");
+            return div;
+        }
+        var num = document.createElement("span");
+        num.className = "ai-split-num";
+        num.textContent = (side === "left" ? row.a : row.b) || "";
+        var text = document.createElement("span");
+        text.className = "ai-split-text";
+        text.textContent = row.text;
+        div.appendChild(num);
+        div.appendChild(text);
+        return div;
+    }
+
+    /** Two aligned columns: what the file says now on the left, proposed on the right. */
+    function render_split(before, after) {
+        var rows = diff(before, after);
+        var st = stats(rows);
+        var host = document.createElement("div");
+        host.className = "ai-split";
+
+        if (!st.changed) {
+            host.innerHTML = '<div class="ai-diff-empty">The proposed code is identical to what is already in the editor.</div>';
+            return {node: host, stats: st};
+        }
+
+        var head = document.createElement("div");
+        head.className = "ai-split-row ai-split-head";
+        head.innerHTML = '<div class="ai-split-cell">Current</div><div class="ai-split-cell">Proposed</div>';
+        host.appendChild(head);
+
+        collapse_pairs(pair(rows)).forEach(function (p) {
+            var row = document.createElement("div");
+            row.className = "ai-split-row ai-split-" + p.type;
+            if (p.type === "gap") {
+                row.textContent = "\u22ef " + p.skipped + " unchanged line" + (p.skipped > 1 ? "s" : "");
+                host.appendChild(row);
+                return;
+            }
+            row.appendChild(cell(p.left, "left"));
+            row.appendChild(cell(p.right, "right"));
+            host.appendChild(row);
+        });
+        return {node: host, stats: st};
+    }
+
+    NS.diff = {diff: diff, render: render, render_split: render_split, stats: stats};
 })(window.GPTCAML);

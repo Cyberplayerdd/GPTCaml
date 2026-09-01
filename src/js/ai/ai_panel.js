@@ -108,7 +108,7 @@ window.GPTCAML = window.GPTCAML || {};
 
     function parse() {
         var raw = $("ai-answer").value;
-        if (!raw.trim()) { status("Paste the assistant's answer first.", "warn"); return; }
+        if (!raw.trim()) { status("Paste the assistant's answer first.", "warn"); return false; }
 
         var parsed = NS.prompt.parse_answer(raw);
         var explanation = $("ai-explanation");
@@ -119,24 +119,101 @@ window.GPTCAML = window.GPTCAML || {};
             explanation.appendChild(p);
         });
 
-        var diff_host = $("ai-diff");
-        diff_host.innerHTML = "";
+        var summary = $("ai-diff");
+        summary.innerHTML = "";
         var apply_btn = $("ai-apply");
+        $("ai-result").style.display = "";
 
         if (!parsed.code) {
             state.proposal = null;
+            hide_pane();
             apply_btn.classList.add("disabled");
-            diff_host.innerHTML = '<div class="ai-diff-empty">No ```ocaml block found in the answer, so there is nothing to apply. The explanation is above.</div>';
-        } else {
-            state.before = state.editor.getValue();
-            // keep the file's trailing newline so it does not show up as a change
-            state.proposal = (/\n$/.test(state.before) && !/\n$/.test(parsed.code))
-                ? parsed.code + "\n" : parsed.code;
-            var rendered = NS.diff.render(state.before, state.proposal);
-            diff_host.appendChild(rendered.node);
-            apply_btn.classList.toggle("disabled", !rendered.stats.changed);
-            status("+" + rendered.stats.added + " / -" + rendered.stats.removed + " lines proposed.", "ok");
+            summary.innerHTML = '<div class="ai-diff-empty">No ```ocaml block found in the answer, so there is nothing to apply. The explanation is above.</div>';
+            return false;
         }
+
+        state.before = state.editor.getValue();
+        // keep the file's trailing newline so it does not show up as a change
+        state.proposal = (/\n$/.test(state.before) && !/\n$/.test(parsed.code))
+            ? parsed.code + "\n" : parsed.code;
+
+        var st = show_pane();
+        apply_btn.classList.toggle("disabled", !st.changed);
+        summary.innerHTML = '<div class="ai-diff-empty">+' + st.added + " / -" + st.removed +
+            " lines - the changes are shown beside the editor.</div>";
+        status("+" + st.added + " / -" + st.removed + " lines proposed.", "ok");
+        return st.changed;
+    }
+
+    /* ---- the proposed-changes pane, left of the editor -------------------- */
+
+    /** Render the current proposal side by side and reveal the pane. */
+    function show_pane() {
+        var rendered = NS.diff.render_split(state.before, state.proposal);
+        var body = $("ai-diff-pane-body");
+        body.innerHTML = "";
+        body.appendChild(rendered.node);
+
+        $("ai-diff-pane-stats").textContent = "+" + rendered.stats.added + " / -" + rendered.stats.removed;
+        $("ai-pane-apply").classList.toggle("disabled", !rendered.stats.changed);
+
+        $("box_diff").style.display = "";
+        var bar = document.querySelector("[name=resizerDiff]");
+        if (bar) {
+            bar.style.display = "";
+            // the main bar flips between row and column layout; match it
+            bar.setAttribute("data-resizer-type", localStorage.getItem("betterocaml-resize-bar") || "H");
+        }
+        return rendered.stats;
+    }
+
+    function hide_pane() {
+        $("box_diff").style.display = "none";
+        var bar = document.querySelector("[name=resizerDiff]");
+        if (bar) bar.style.display = "none";
+    }
+
+    /**
+     * The nav-bar paste button: read the answer straight from the clipboard so
+     * the round trip is one click, and fall back to the panel's paste box when
+     * the browser will not hand it over.
+     */
+    function paste_answer() {
+        if (!prepare(NS.settings.get("action"))) return;
+
+        function consume(text) {
+            if (!text || !text.trim()) {
+                open(state.intent);
+                status("The clipboard is empty - paste the answer here.", "warn");
+                $("ai-answer").focus();
+                return;
+            }
+            $("ai-answer").value = text;
+            if (parse()) {
+                M.Modal.getInstance($("ai-modal")).close();
+                toast("Proposed changes shown beside the editor.");
+            } else {
+                open_result();
+            }
+        }
+
+        function manual() {
+            open(state.intent);
+            $("ai-answer").focus();
+            status("Paste the answer here with Ctrl+V.", "warn");
+        }
+
+        if (navigator.clipboard && navigator.clipboard.readText) {
+            navigator.clipboard.readText().then(consume, manual);
+        } else {
+            manual();
+        }
+    }
+
+    /** Show the panel with the review section already filled in. */
+    function open_result() {
+        var modal = M.Modal.getInstance($("ai-modal"));
+        if (!modal.isOpen) modal.open();
         $("ai-result").style.display = "";
         $("ai-result").scrollIntoView({behavior: "smooth", block: "start"});
     }
@@ -152,6 +229,7 @@ window.GPTCAML = window.GPTCAML || {};
         ed.is_saved = false;
         try { autosave_editor(ed.id); } catch (e) { /* autosave is best effort */ }
         ed.focus();
+        hide_pane();
         M.Modal.getInstance($("ai-modal")).close();
         toast("Applied - press Ctrl+Z to undo.");
     }
@@ -262,7 +340,13 @@ window.GPTCAML = window.GPTCAML || {};
             "ai-paste-chatgpt": function () { send("chatgpt", {prefill: false}); },
             "ai-parse": parse,
             "ai-apply": apply,
-            "ai-error-chip": function () { open("explain"); }
+            "ai-error-chip": function () { open("explain"); },
+            "ai-pane-apply": apply,
+            "ai-pane-explain": open_result,
+            "ai-pane-close": function () {
+                state.proposal = null;
+                hide_pane();
+            }
         };
         Object.keys(bind).forEach(function (id) {
             var el = $(id);
@@ -284,9 +368,22 @@ window.GPTCAML = window.GPTCAML || {};
         if (answer) answer.addEventListener("paste", function () { setTimeout(parse, 0); });
 
         hide_chip();
+        hide_pane();
+
+        // resizer.js is loaded async and the main bar is built on load, so wait
+        // for the same moment rather than racing it
+        window.addEventListener("load", function () {
+            var bar = document.querySelector("[name=resizerDiff]");
+            if (!bar || typeof Resizer === "undefined") return;
+            new Resizer(bar, localStorage.getItem("betterocaml-resize-bar") || "H");
+            // Resizer gives both neighbours an equal share; the editor deserves
+            // more room than the diff
+            $("box_diff").style.flexGrow = 0.75;
+        }, false);
     }
 
-    NS.ai = {open: open, quick_ask: quick_ask, quick_copy: quick_copy, parse: parse, apply: apply, init: init};
+    NS.ai = {open: open, quick_ask: quick_ask, quick_copy: quick_copy,
+             paste_answer: paste_answer, parse: parse, apply: apply, init: init};
 
     document.addEventListener("DOMContentLoaded", init);
 })(window.GPTCAML);
@@ -294,6 +391,7 @@ window.GPTCAML = window.GPTCAML || {};
 /* Called from the editor keymap and the nav bar. */
 function ai_quick_ask() { window.GPTCAML.ai.quick_ask(); }
 function ai_quick_copy() { window.GPTCAML.ai.quick_copy(); }
+function ai_paste_answer() { window.GPTCAML.ai.paste_answer(); }
 function ai_explain_last_error() { window.GPTCAML.ai.quick_ask(); }
 function ai_fix_last_error() { window.GPTCAML.ai.open("fix"); }
 function ai_ask_about_selection() { window.GPTCAML.ai.open("ask"); }

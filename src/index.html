@@ -109,6 +109,10 @@
                     <i class="material-icons ai-icon-badge">content_copy</i>
                 </span>
             </a></li>
+            <li><a id="ai-paste-button" onclick="ai_paste_answer()"
+                   title="Paste the assistant's answer and show the proposed changes">
+                <i class="material-icons">content_paste</i>
+            </a></li>
             <li><a id="ai-settings-button" class="modal-trigger" href="#ai-settings" title="AI settings">
                 <span class="ai-icon-stack">
                     <i class="material-icons">lightbulb_outline</i>
@@ -435,6 +439,26 @@
 </div>
 
 <div class="container-boc container horizontal">
+    <!-- GPTCaml: proposed changes, side by side, left of the editor -->
+    <div id="box_diff" class="box diff-box" style="display:none">
+        <div id="ai-diff-pane">
+            <div id="ai-diff-pane-head">
+                <span id="ai-diff-pane-title">Proposed changes</span>
+                <span id="ai-diff-pane-stats"></span>
+                <span class="ai-diff-pane-actions">
+                    <a id="ai-pane-apply" class="waves-effect waves-light btn-small">Apply</a>
+                    <a id="ai-pane-explain" class="waves-effect btn-flat white-text btn-small"
+                       title="Read the assistant's explanation">Why?</a>
+                    <a id="ai-pane-close" class="waves-effect btn-flat white-text btn-small"
+                       title="Discard these changes"><i class="material-icons">close</i></a>
+                </span>
+            </div>
+            <div id="ai-diff-pane-body"></div>
+        </div>
+    </div>
+
+    <div name="resizerDiff" style="display:none"></div>
+
     <!-- Editor flexboxs -->
     <div id="box_1" class="box editor-box" style="display:flex;flex-direction:column">
         <div class="editorCollection" id="editorCollection">
