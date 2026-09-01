@@ -6,12 +6,12 @@
  * nothing was ever precached. This list is generated from what src/ actually
  * contains. Bump CACHE_NAME whenever it changes. */
 
-const CACHE_NAME = 'gptcaml-static-v3';
+const CACHE_NAME = 'gptcaml-static-v4';
 
 const staticAssets = [
     './manifest.json',
     './index.html',
-    './css/ai.css',
+    './css/ai.css?v=2',
     './css/icon.css',
     './css/index.css',
     './css/codemirror/codemirror.min.css',
@@ -75,18 +75,21 @@ const staticAssets = [
 ];
 
 self.addEventListener('install', event => {
+    // without skipWaiting a new worker sits idle until every tab of the app is
+    // closed, so a deployed fix can go unseen for days
+    self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME).then(cache => cache.addAll(staticAssets))
     );
 });
 
 self.addEventListener('activate', event => {
-    // drop caches from previous versions of the app
+    // drop every cache from previous versions, including the dynamic one -
+    // a stale stylesheet served from it is exactly how a fix goes missing
     event.waitUntil(
-        caches.keys().then(keys => Promise.all(
-            keys.filter(k => k !== CACHE_NAME && k !== 'dynamic-cache')
-                .map(k => caches.delete(k))
-        ))
+        caches.keys()
+            .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+            .then(() => self.clients.claim())
     );
 });
 
