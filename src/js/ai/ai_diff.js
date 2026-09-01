@@ -170,10 +170,131 @@ window.GPTCAML = window.GPTCAML || {};
         return div;
     }
 
+    /* ---- block alignment -------------------------------------------------
+     *
+     * A plain line diff falls apart when the assistant reorders definitions:
+     * LCS only sees lines, so it happily parks `supprimer_tas_min` opposite
+     * `ajouter_tas_min` just because they occupy the same position. Splitting
+     * the file into top-level definitions first, matching those by name, and
+     * only then diffing line by line inside each pair keeps every function
+     * opposite its own previous version - and a definition that merely moved
+     * shows up as unchanged instead of as one big deletion and one big
+     * addition somewhere else.
+     */
+
+    var BLOCK_START = /^(let|type|exception|module|open|include|external|class|val)\b/;
+
+    /** A stable identity for a top-level definition, e.g. "let ajouter_fin". */
+    function block_key(line) {
+        var m = line.match(/^let\s+(?:rec\s+)?([A-Za-z_][\w']*|\(\s*\))/);
+        if (m) return "let " + m[1].replace(/\s+/g, "");
+        m = line.match(/^type\s+(?:\([^)]*\)\s+|(?:'[A-Za-z_][\w']*\s+)*)?([A-Za-z_][\w']*)/);
+        if (m) return "type " + m[1];
+        m = line.match(/^(exception|module|open|include|external|class|val)\s+([A-Za-z_][\w'.]*)/);
+        if (m) return m[1] + " " + m[2];
+        return line.trim().slice(0, 40);
+    }
+
+    /**
+     * Cut a file into top-level definitions. A line starting at column 0 with a
+     * definition keyword opens a block; `and` continues the one before it, and
+     * indented lines belong to whatever is open.
+     * @return {Array<{key: string, first: number, lines: Array<string>}>}
+     */
+    function split_blocks(text) {
+        var lines = text.replace(/\r\n/g, "\n").split("\n");
+        var blocks = [], current = null, seen = {};
+
+        lines.forEach(function (line, i) {
+            if (BLOCK_START.test(line)) {
+                if (current) blocks.push(current);
+                var key = block_key(line);
+                seen[key] = (seen[key] || 0) + 1;
+                // two `let () = ...` in one file are different blocks
+                current = {key: key + (seen[key] > 1 ? "#" + seen[key] : ""), first: i, lines: []};
+            }
+            if (!current) current = {key: "(preamble)", first: i, lines: []};
+            current.lines.push(line);
+        });
+        if (current) blocks.push(current);
+        return blocks;
+    }
+
+    function side(row, block, which) {
+        return {
+            text: row.text,
+            a: which === "a" ? block.first + row.a : null,
+            b: which === "b" ? block.first + row.b : null
+        };
+    }
+
+    /** Side-by-side rows for one pair of blocks; either side may be missing. */
+    function block_rows(a, b) {
+        if (!a) {
+            return b.lines.map(function (line, i) {
+                return {left: null, right: {text: line, b: b.first + i + 1}, type: "add"};
+            });
+        }
+        if (!b) {
+            return a.lines.map(function (line, i) {
+                return {left: {text: line, a: a.first + i + 1}, right: null, type: "del"};
+            });
+        }
+        return pair(diff(a.lines.join("\n"), b.lines.join("\n"))).map(function (p) {
+            return {
+                left: p.left ? side(p.left, a, "a") : null,
+                right: p.right ? side(p.right, b, "b") : null,
+                type: p.type
+            };
+        });
+    }
+
+    /** Match definitions by name, then diff inside each match. */
+    function align_blocks(before, after) {
+        var A = split_blocks(before), B = split_blocks(after);
+        var by_key = {};
+        A.forEach(function (blk, i) { by_key[blk.key] = i; });
+
+        var partner = {}, taken = {};
+        B.forEach(function (blk, j) {
+            var i = by_key[blk.key];
+            if (i !== undefined && !taken[i]) { partner[j] = i; taken[i] = true; }
+        });
+
+        var rows = [], emitted = {};
+
+        // Reordering means we cannot sweep A with a monotonic cursor - the next
+        // match can sit before the last one. Scan from the start every time and
+        // let `emitted` guarantee each dropped definition is shown exactly once.
+        function drain_to(limit) {
+            for (var k = 0; k < limit; k++) {
+                if (taken[k] || emitted[k]) continue;
+                rows = rows.concat(block_rows(A[k], null));
+                emitted[k] = true;
+            }
+        }
+
+        B.forEach(function (blk, j) {
+            var i = partner[j];
+            if (i === undefined) { rows = rows.concat(block_rows(null, blk)); return; }
+            drain_to(i);                       // definitions dropped before this one
+            rows = rows.concat(block_rows(A[i], blk));
+        });
+        drain_to(A.length);
+        return rows;
+    }
+
     /** Two aligned columns: what the file says now on the left, proposed on the right. */
     function render_split(before, after) {
-        var rows = diff(before, after);
-        var st = stats(rows);
+        var pairs = align_blocks(before, after);
+        var st = {added: 0, removed: 0};
+        pairs.forEach(function (p) {
+            if (p.type === "ctx") return;
+            if (p.right) st.added++;
+            if (p.left) st.removed++;
+        });
+        st.changed = (st.added + st.removed) > 0;
+
         var host = document.createElement("div");
         host.className = "ai-split";
 
@@ -187,7 +308,7 @@ window.GPTCAML = window.GPTCAML || {};
         head.innerHTML = '<div class="ai-split-cell">Current</div><div class="ai-split-cell">Proposed</div>';
         host.appendChild(head);
 
-        collapse_pairs(pair(rows)).forEach(function (p) {
+        collapse_pairs(pairs).forEach(function (p) {
             var row = document.createElement("div");
             row.className = "ai-split-row ai-split-" + p.type;
             if (p.type === "gap") {
