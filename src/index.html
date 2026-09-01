@@ -100,8 +100,25 @@
                     </label>
                 </a>
             </li>
-            <li><a id="ai-nav-button" title="Ask Claude or ChatGPT about your code (Ctrl+Shift+E)"
-                   onclick="ai_explain_last_error()"><i class="material-icons">lightbulb_outline</i></a></li>
+            <li><a id="ai-nav-button" title="Ask the assistant (Ctrl+Shift+E)"
+                   onclick="ai_quick_ask()"><i class="material-icons">lightbulb_outline</i></a></li>
+            <li><a id="ai-copy-button" onclick="ai_quick_copy()"
+                   title="Copy the prompt and open the assistant, ready to paste">
+                <span class="ai-icon-stack">
+                    <i class="material-icons">lightbulb_outline</i>
+                    <i class="material-icons ai-icon-badge">content_copy</i>
+                </span>
+            </a></li>
+            <li><a id="ai-paste-button" onclick="ai_paste_answer()"
+                   title="Paste the assistant's answer and show the proposed changes">
+                <i class="material-icons">content_paste</i>
+            </a></li>
+            <li><a id="ai-settings-button" class="modal-trigger" href="#ai-settings" title="AI settings">
+                <span class="ai-icon-stack">
+                    <i class="material-icons">lightbulb_outline</i>
+                    <i class="material-icons ai-icon-badge">settings</i>
+                </span>
+            </a></li>
             <li><a class="modal-trigger" href="#help"><i class="material-icons">settings</i></a></li>
         </ul>
     </div>
@@ -253,7 +270,7 @@
                 <div class="shortcut-command ctrl"> + Shift + G </div> : Find previous
             </blockquote>
             <blockquote class="commands">
-                <div class="shortcut-command ctrl"> + H </div> : Replace
+                <div class="shortcut-command ctrl"> + H </div> : Replace ("replace" and "with" side by side)
             </blockquote>
             <blockquote class="commands">
                 <div class="shortcut-command ctrl"> + Shift + H </div> : Replace all
@@ -265,12 +282,65 @@
         <h5>AI assistant</h5>
         <div class="help-section">
             <blockquote class="commands">
-                <div class="shortcut-command ctrl"> + Shift + E </div> : Explain the last error and propose a fix
+                <div class="shortcut-command ctrl"> + Shift + E </div> : Ask the assistant (see AI settings)
             </blockquote>
             <blockquote class="commands">
                 <div class="shortcut-command ctrl"> + I </div> : Ask about the current file or selection
             </blockquote>
         </div>
+    </div>
+    <div class="modal-footer help">
+        <a href="#" class="modal-close waves-effect waves-green btn-flat white-text">Close</a>
+    </div>
+</div>
+
+<!-- GPTCaml: AI settings -->
+<div id="ai-settings" class="modal help">
+    <div class="modal-content">
+        <h4>AI settings</h4>
+        <p class="ai-hint">What the lightbulb does when you click it.</p>
+
+        <div class="ai-settings-grid">
+            <label for="ai-set-action">Action</label>
+            <select id="ai-set-action" class="browser-default">
+                <option value="explain">Explain the last error</option>
+                <option value="fix">Fix the last error</option>
+                <option value="ask">Ask about my code</option>
+            </select>
+
+            <label for="ai-set-provider">Assistant</label>
+            <select id="ai-set-provider" class="browser-default">
+                <option value="claude">Claude</option>
+                <option value="chatgpt">ChatGPT</option>
+            </select>
+
+            <label for="ai-set-level">Detail</label>
+            <select id="ai-set-level" class="browser-default">
+                <option value="beginner">Beginner - spell out the reasoning</option>
+                <option value="balanced">Balanced</option>
+                <option value="terse">Terse - just the essentials</option>
+            </select>
+
+            <label for="ai-set-language">Answer language</label>
+            <select id="ai-set-language" class="browser-default">
+                <option value="auto">Same as the question</option>
+                <option value="English">English</option>
+                <option value="Francais">Français</option>
+            </select>
+
+            <label for="ai-set-extra">Extra instructions</label>
+            <textarea id="ai-set-extra" placeholder="Anything to add to every prompt, e.g. &quot;prefer the standard library over recursion by hand&quot;"></textarea>
+        </div>
+
+        <p>
+            <label>
+                <input id="ai-set-autolaunch" type="checkbox"/>
+                <span>Open the assistant straight away (otherwise the lightbulb only prepares the prompt)</span>
+            </label>
+        </p>
+
+        <p class="ai-privacy">These settings are stored in this browser only. Nothing is sent anywhere until
+            you click through to Claude or ChatGPT.</p>
     </div>
     <div class="modal-footer help">
         <a href="#" class="modal-close waves-effect waves-green btn-flat white-text">Close</a>
@@ -301,7 +371,13 @@
             <div class="ai-actions">
                 <a id="ai-copy" class="waves-effect waves-light btn"><i class="material-icons left">content_copy</i>Copy prompt</a>
                 <a id="ai-open-claude" class="waves-effect waves-light btn">Open in Claude</a>
+                <a id="ai-paste-claude" class="waves-effect btn-flat white-text ai-paste-btn"
+                   title="Copy and open Claude without pre-filling, ready to paste"><i
+                        class="material-icons">content_copy</i></a>
                 <a id="ai-open-chatgpt" class="waves-effect waves-light btn">Open in ChatGPT</a>
+                <a id="ai-paste-chatgpt" class="waves-effect btn-flat white-text ai-paste-btn"
+                   title="Copy and open ChatGPT without pre-filling, ready to paste"><i
+                        class="material-icons">content_copy</i></a>
             </div>
             <div id="ai-status" class="ai-status"></div>
         </div>
@@ -380,6 +456,22 @@
                 <textarea id="userinput" autocorrect="off" autocapitalize="none">Loading ...</textarea>
             </div>
         </div>
+
+        <!-- GPTCaml: proposed changes, covering the toplevel until dismissed -->
+            <div id="ai-diff-pane" style="display: none;">
+                <div id="ai-diff-pane-head">
+                    <span id="ai-diff-pane-title">Proposed changes</span>
+                    <span id="ai-diff-pane-stats"></span>
+                    <span class="ai-diff-pane-actions">
+                        <a id="ai-pane-apply" class="waves-effect waves-light btn-small">Apply</a>
+                        <a id="ai-pane-explain" class="waves-effect btn-flat white-text btn-small"
+                           title="Read the assistant's explanation">Why?</a>
+                        <a id="ai-pane-close" class="ai-pane-close"
+                           title="Close and go back to the toplevel"><i class="material-icons">close</i></a>
+                    </span>
+                </div>
+                <div id="ai-diff-pane-body"></div>
+            </div>
     </div>
 
 </div>
@@ -387,7 +479,9 @@
 <script src="js/materialize.min.js"></script>
 <script src="js/editor_change.js"></script>
 <script src="js/shortcuts.js"></script>
+<script src="js/ai/ai_settings.js"></script>
 <script src="js/ai/ai_context.js"></script>
+<script src="js/ai/ai_markdown.js"></script>
 <script src="js/ai/ai_prompt.js"></script>
 <script src="js/ai/ai_providers.js"></script>
 <script src="js/ai/ai_diff.js"></script>

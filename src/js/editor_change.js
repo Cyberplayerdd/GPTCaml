@@ -665,12 +665,12 @@ function create_editor(id, name) {
             // GPTCaml: standard search / replace shortcuts
             "Ctrl-F": "findPersistent",
             "Cmd-F": "findPersistent",
-            "Ctrl-H": "replace",
-            "Shift-Ctrl-H": "replaceAll",
-            "Cmd-Alt-F": "replace",
+            "Ctrl-H": "gptcamlReplace",
+            "Shift-Ctrl-H": "gptcamlReplaceAll",
+            "Cmd-Alt-F": "gptcamlReplace",
             // GPTCaml: AI assistant
-            "Shift-Ctrl-E": function (cm) { ai_explain_last_error(cm); },
-            "Shift-Cmd-E": function (cm) { ai_explain_last_error(cm); },
+            "Shift-Ctrl-E": function (cm) { ai_quick_ask(cm); },
+            "Shift-Cmd-E": function (cm) { ai_quick_ask(cm); },
             "Ctrl-I": function (cm) { ai_ask_about_selection(cm); },
             "Cmd-I": function (cm) { ai_ask_about_selection(cm); },
             "Ctrl-S": save,
