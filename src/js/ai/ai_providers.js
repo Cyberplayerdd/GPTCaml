@@ -44,8 +44,17 @@ window.GPTCAML = window.GPTCAML || {};
             label: label,
             icon: icon,
             mode: "handoff",
-            send: function (prompt) {
-                var short = prompt.length <= URL_PREFILL_LIMIT;
+            /**
+             * @param {string} prompt
+             * @param {{prefill: boolean}} [opts] prefill:false skips the ?q=
+             *        parameter entirely and just opens the site. The URL
+             *        prefill is best effort - Claude may have dropped it, and
+             *        both sites drop it when they bounce you through a login -
+             *        so this is the reliable "paste it yourself" route.
+             */
+            send: function (prompt, opts) {
+                var prefill = !(opts && opts.prefill === false);
+                var short = prefill && prompt.length <= URL_PREFILL_LIMIT;
                 var url = short ? base + "?" + query_param + "=" + encodeURIComponent(prompt) : base;
                 // opened synchronously: waiting for the clipboard promise first
                 // loses the user gesture and the popup blocker eats the tab
@@ -56,7 +65,7 @@ window.GPTCAML = window.GPTCAML || {};
                         note: (opened ? "" : "Your browser blocked the new tab - open " + label + " yourself. ") +
                             (short
                                 ? "Prompt copied and pre-filled. If the box is empty, just paste (Ctrl+V)."
-                                : "Prompt copied - it is too long to pre-fill, so paste it (Ctrl+V) into " + label + ".")
+                                : "Prompt copied - paste it (Ctrl+V) into " + label + ".")
                     };
                 }, function () {
                     return {

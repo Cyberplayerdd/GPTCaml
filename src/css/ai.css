@@ -216,3 +216,13 @@
     color: var(--code-constant);
     margin-left: .4em;
 }
+
+.ai-paste-btn {
+    padding: 0 .6em !important;
+    min-width: 0;
+    opacity: .8;
+}
+
+.ai-paste-btn:hover { opacity: 1; }
+
+.ai-paste-btn .material-icons { font-size: 1.1rem; }

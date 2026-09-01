@@ -102,6 +102,13 @@
             </li>
             <li><a id="ai-nav-button" title="Ask the assistant (Ctrl+Shift+E)"
                    onclick="ai_quick_ask()"><i class="material-icons">lightbulb_outline</i></a></li>
+            <li><a id="ai-copy-button" onclick="ai_quick_copy()"
+                   title="Copy the prompt and open the assistant, ready to paste">
+                <span class="ai-icon-stack">
+                    <i class="material-icons">lightbulb_outline</i>
+                    <i class="material-icons ai-icon-badge">content_copy</i>
+                </span>
+            </a></li>
             <li><a id="ai-settings-button" class="modal-trigger" href="#ai-settings" title="AI settings">
                 <span class="ai-icon-stack">
                     <i class="material-icons">lightbulb_outline</i>
@@ -360,7 +367,13 @@
             <div class="ai-actions">
                 <a id="ai-copy" class="waves-effect waves-light btn"><i class="material-icons left">content_copy</i>Copy prompt</a>
                 <a id="ai-open-claude" class="waves-effect waves-light btn">Open in Claude</a>
+                <a id="ai-paste-claude" class="waves-effect btn-flat white-text ai-paste-btn"
+                   title="Copy and open Claude without pre-filling, ready to paste"><i
+                        class="material-icons">content_copy</i></a>
                 <a id="ai-open-chatgpt" class="waves-effect waves-light btn">Open in ChatGPT</a>
+                <a id="ai-paste-chatgpt" class="waves-effect btn-flat white-text ai-paste-btn"
+                   title="Copy and open ChatGPT without pre-filling, ready to paste"><i
+                        class="material-icons">content_copy</i></a>
             </div>
             <div id="ai-status" class="ai-status"></div>
         </div>

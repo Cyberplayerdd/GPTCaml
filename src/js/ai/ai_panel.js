@@ -83,11 +83,11 @@ window.GPTCAML = window.GPTCAML || {};
         if (state.intent === "ask") open("ask");
     }
 
-    function send(provider_id) {
+    function send(provider_id, opts) {
         var provider = NS.providers.list[provider_id];
         if (!provider) return;
         status("Opening " + provider.label + " ...");
-        provider.send($("ai-prompt").value).then(function (res) {
+        provider.send($("ai-prompt").value, opts).then(function (res) {
             status(res.note, res.ok ? "ok" : "warn");
         }, function (err) {
             status("Could not open " + provider.label + ": " + err.message, "warn");
@@ -153,6 +153,19 @@ window.GPTCAML = window.GPTCAML || {};
         var prefs = NS.settings.all();
         open(prefs.action);
         if (state.prompt && prefs.autolaunch) send(prefs.provider);
+    }
+
+    /**
+     * Same as quick_ask, but never tries to pre-fill through the URL: it copies
+     * the prompt and opens a plain chat window for you to paste into. The
+     * pre-fill is best effort and silently does nothing when the assistant has
+     * dropped the parameter or bounced you through a login, which leaves you
+     * staring at an empty box - this route always works.
+     */
+    function quick_copy() {
+        var prefs = NS.settings.all();
+        open(prefs.action);
+        if (state.prompt) send(prefs.provider, {prefill: false});
     }
 
     /* ---- settings ------------------------------------------------------- */
@@ -221,6 +234,8 @@ window.GPTCAML = window.GPTCAML || {};
             },
             "ai-open-claude": function () { send("claude"); },
             "ai-open-chatgpt": function () { send("chatgpt"); },
+            "ai-paste-claude": function () { send("claude", {prefill: false}); },
+            "ai-paste-chatgpt": function () { send("chatgpt", {prefill: false}); },
             "ai-parse": parse,
             "ai-apply": apply,
             "ai-error-chip": function () { open("explain"); }
@@ -247,13 +262,14 @@ window.GPTCAML = window.GPTCAML || {};
         hide_chip();
     }
 
-    NS.ai = {open: open, quick_ask: quick_ask, parse: parse, apply: apply, init: init};
+    NS.ai = {open: open, quick_ask: quick_ask, quick_copy: quick_copy, parse: parse, apply: apply, init: init};
 
     document.addEventListener("DOMContentLoaded", init);
 })(window.GPTCAML);
 
 /* Called from the editor keymap and the nav bar. */
 function ai_quick_ask() { window.GPTCAML.ai.quick_ask(); }
+function ai_quick_copy() { window.GPTCAML.ai.quick_copy(); }
 function ai_explain_last_error() { window.GPTCAML.ai.quick_ask(); }
 function ai_fix_last_error() { window.GPTCAML.ai.open("fix"); }
 function ai_ask_about_selection() { window.GPTCAML.ai.open("ask"); }
