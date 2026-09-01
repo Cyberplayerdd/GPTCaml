@@ -113,11 +113,8 @@ window.GPTCAML = window.GPTCAML || {};
         var parsed = NS.prompt.parse_answer(raw);
         var explanation = $("ai-explanation");
         explanation.innerHTML = "";
-        (parsed.explanation || "(the answer contained no explanation)").split(/\n{2,}/).forEach(function (para) {
-            var p = document.createElement("p");
-            p.textContent = para.trim();
-            explanation.appendChild(p);
-        });
+        explanation.appendChild(NS.markdown.render(
+            parsed.explanation || "(the answer contained no explanation)"));
 
         var summary = $("ai-diff");
         summary.innerHTML = "";

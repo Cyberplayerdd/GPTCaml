@@ -6,7 +6,7 @@
  * nothing was ever precached. This list is generated from what src/ actually
  * contains. Bump CACHE_NAME whenever it changes. */
 
-const CACHE_NAME = 'gptcaml-static-v2';
+const CACHE_NAME = 'gptcaml-static-v3';
 
 const staticAssets = [
     './manifest.json',
@@ -55,6 +55,7 @@ const staticAssets = [
     './js/shortcuts.js',
     './js/ai/ai_settings.js',
     './js/ai/ai_context.js',
+    './js/ai/ai_markdown.js',
     './js/ai/ai_prompt.js',
     './js/ai/ai_providers.js',
     './js/ai/ai_diff.js',
