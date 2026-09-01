@@ -39,13 +39,18 @@ window.GPTCAML = window.GPTCAML || {};
      * Fill the panel for an intent and open it.
      * @param {string} intent "explain" | "fix" | "ask"
      */
-    function open(intent) {
+    /**
+     * Assemble the prompt for an intent and remember what it was built from.
+     * Touches no UI, so both the panel and the one-click buttons can use it.
+     * @return {?string} the prompt, or null if there is no editor
+     */
+    function prepare(intent) {
         var ctx = NS.context.editor_state();
-        if (!ctx) { toast("No editor is open."); return; }
+        if (!ctx) { toast("No editor is open."); return null; }
 
         var error = NS.context.last_error();
         if ((intent === "explain" || intent === "fix") && !error) {
-            toast("No error in the console yet - ask a question instead.");
+            toast("No error in the console yet - asking about your code instead.");
             intent = "ask";
         }
 
@@ -55,8 +60,6 @@ window.GPTCAML = window.GPTCAML || {};
         state.proposal = null;
 
         var question = $("ai-question");
-        if (question) question.parentElement.style.display = (intent === "ask") ? "" : "none";
-
         state.prompt = NS.prompt.build(intent, {
             version: NS.context.ocaml_version(),
             name: ctx.name,
@@ -65,8 +68,17 @@ window.GPTCAML = window.GPTCAML || {};
             error: error,
             question: question ? question.value : ""
         });
+        return state.prompt;
+    }
 
-        $("ai-intent-label").textContent = INTENT_LABEL[intent];
+    /** Fill the panel from the current state and show it. */
+    function open(intent) {
+        if (!prepare(intent)) return;
+
+        var question = $("ai-question");
+        if (question) question.parentElement.style.display = (state.intent === "ask") ? "" : "none";
+
+        $("ai-intent-label").textContent = INTENT_LABEL[state.intent];
         $("ai-prompt").value = state.prompt;
         $("ai-answer").value = "";
         $("ai-result").style.display = "none";
@@ -164,8 +176,20 @@ window.GPTCAML = window.GPTCAML || {};
      */
     function quick_copy() {
         var prefs = NS.settings.all();
-        open(prefs.action);
-        if (state.prompt) send(prefs.provider, {prefill: false});
+        var prompt = prepare(prefs.action);
+        if (!prompt) return;
+
+        var provider = NS.providers.list[prefs.provider];
+        if (!provider) return;
+
+        var intent = state.intent;
+        provider.send(prompt, {prefill: false}).then(function (res) {
+            // no panel: the whole point of this button is copy + open, nothing
+            // else. The answer still needs somewhere to land, so the toast
+            // offers the way back in.
+            toast(res.note + " <a class=\"toast-action white-text\" onclick=\"GPTCAML.ai.open('" +
+                intent + "')\">Paste answer</a>");
+        });
     }
 
     /* ---- settings ------------------------------------------------------- */
