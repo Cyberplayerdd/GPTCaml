@@ -439,26 +439,6 @@
 </div>
 
 <div class="container-boc container horizontal">
-    <!-- GPTCaml: proposed changes, side by side, left of the editor -->
-    <div id="box_diff" class="box diff-box" style="display:none">
-        <div id="ai-diff-pane">
-            <div id="ai-diff-pane-head">
-                <span id="ai-diff-pane-title">Proposed changes</span>
-                <span id="ai-diff-pane-stats"></span>
-                <span class="ai-diff-pane-actions">
-                    <a id="ai-pane-apply" class="waves-effect waves-light btn-small">Apply</a>
-                    <a id="ai-pane-explain" class="waves-effect btn-flat white-text btn-small"
-                       title="Read the assistant's explanation">Why?</a>
-                    <a id="ai-pane-close" class="waves-effect btn-flat white-text btn-small"
-                       title="Discard these changes"><i class="material-icons">close</i></a>
-                </span>
-            </div>
-            <div id="ai-diff-pane-body"></div>
-        </div>
-    </div>
-
-    <div name="resizerDiff" style="display:none"></div>
-
     <!-- Editor flexboxs -->
     <div id="box_1" class="box editor-box" style="display:flex;flex-direction:column">
         <div class="editorCollection" id="editorCollection">
@@ -476,6 +456,22 @@
                 <textarea id="userinput" autocorrect="off" autocapitalize="none">Loading ...</textarea>
             </div>
         </div>
+
+        <!-- GPTCaml: proposed changes, covering the toplevel until dismissed -->
+            <div id="ai-diff-pane" style="display: none;">
+                <div id="ai-diff-pane-head">
+                    <span id="ai-diff-pane-title">Proposed changes</span>
+                    <span id="ai-diff-pane-stats"></span>
+                    <span class="ai-diff-pane-actions">
+                        <a id="ai-pane-apply" class="waves-effect waves-light btn-small">Apply</a>
+                        <a id="ai-pane-explain" class="waves-effect btn-flat white-text btn-small"
+                           title="Read the assistant's explanation">Why?</a>
+                        <a id="ai-pane-close" class="ai-pane-close"
+                           title="Close and go back to the toplevel"><i class="material-icons">close</i></a>
+                    </span>
+                </div>
+                <div id="ai-diff-pane-body"></div>
+            </div>
     </div>
 
 </div>

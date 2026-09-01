@@ -140,7 +140,7 @@ window.GPTCAML = window.GPTCAML || {};
         var st = show_pane();
         apply_btn.classList.toggle("disabled", !st.changed);
         summary.innerHTML = '<div class="ai-diff-empty">+' + st.added + " / -" + st.removed +
-            " lines - the changes are shown beside the editor.</div>";
+            " lines - the changes are shown over the toplevel.</div>";
         status("+" + st.added + " / -" + st.removed + " lines proposed.", "ok");
         return st.changed;
     }
@@ -156,21 +156,13 @@ window.GPTCAML = window.GPTCAML || {};
 
         $("ai-diff-pane-stats").textContent = "+" + rendered.stats.added + " / -" + rendered.stats.removed;
         $("ai-pane-apply").classList.toggle("disabled", !rendered.stats.changed);
-
-        $("box_diff").style.display = "";
-        var bar = document.querySelector("[name=resizerDiff]");
-        if (bar) {
-            bar.style.display = "";
-            // the main bar flips between row and column layout; match it
-            bar.setAttribute("data-resizer-type", localStorage.getItem("betterocaml-resize-bar") || "H");
-        }
+        $("ai-diff-pane").style.display = "flex";
         return rendered.stats;
     }
 
+    /** Put the toplevel back. */
     function hide_pane() {
-        $("box_diff").style.display = "none";
-        var bar = document.querySelector("[name=resizerDiff]");
-        if (bar) bar.style.display = "none";
+        $("ai-diff-pane").style.display = "none";
     }
 
     /**
@@ -191,7 +183,7 @@ window.GPTCAML = window.GPTCAML || {};
             $("ai-answer").value = text;
             if (parse()) {
                 M.Modal.getInstance($("ai-modal")).close();
-                toast("Proposed changes shown beside the editor.");
+                toast("Proposed changes shown over the toplevel.");
             } else {
                 open_result();
             }
@@ -369,17 +361,6 @@ window.GPTCAML = window.GPTCAML || {};
 
         hide_chip();
         hide_pane();
-
-        // resizer.js is loaded async and the main bar is built on load, so wait
-        // for the same moment rather than racing it
-        window.addEventListener("load", function () {
-            var bar = document.querySelector("[name=resizerDiff]");
-            if (!bar || typeof Resizer === "undefined") return;
-            new Resizer(bar, localStorage.getItem("betterocaml-resize-bar") || "H");
-            // Resizer gives both neighbours an equal share; the editor deserves
-            // more room than the diff
-            $("box_diff").style.flexGrow = 0.75;
-        }, false);
     }
 
     NS.ai = {open: open, quick_ask: quick_ask, quick_copy: quick_copy,
