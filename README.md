@@ -1,114 +1,92 @@
-# BetterOCaml
-[![GitHub license](https://img.shields.io/github/license/jbdoderlein/betterocaml?style=flat-square)](https://github.com/jbdoderlein/betterocaml/blob/master/LICENSE)
-![GitHub repo size](https://img.shields.io/github/repo-size/jbdoderlein/BetterOCaml?style=flat-square)
-[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg?style=flat-square)](https://GitHub.com/jbdoderlein/BetterOCaml/graphs/commit-activity)
-[![Open Source? Yes!](https://badgen.net/badge/Open%20Source%20%3F/Yes%21/blue?icon=github)](https://github.com/Naereen/badges/)
-[![Awesome Badges](https://img.shields.io/badge/badges-awesome-green.svg?style=flat-square)](https://github.com/Naereen/badges)
-<p style="font-style: italic"> Language : 
-  <span>English</span> |
-  <a href="https://github.com/jbdoderlein/BetterOCaml/tree/master/lang/french#betterocaml">Français</a>
-  </p>
+# GPTCaml
 
-An efficient, intuitive and cross-platform web IDE for the [OCaml](https://www.ocaml.org/) language (recent: v5.3.0), with your code interpreted and running in your browser! (no server is needed!)
+A fork of [BetterOCaml](https://github.com/jbdoderlein/BetterOCaml) — the browser-based OCaml IDE whose
+interpreter is compiled to JavaScript with `js_of_ocaml`, so nothing is ever sent to a server — with two
+additions:
 
-## Installation / Usage
+1. **Standard search shortcuts.** `Ctrl+F` and `Ctrl+H` do what they do in every other editor.
+2. **An AI assistant** that takes a toplevel error, explains *why* it is an error, and proposes a corrected
+   file you can apply with one click.
 
-The IDE is hosted [here](https://jbdoderlein.github.io/BetterOCaml), <https://jbdoderlein.github.io/BetterOCaml>, but you can host your own version by simply copying the files from the `src/` directory on your host (on a folder of your laptop, or a folder of your web-server, see <http://ocaml.besson.link/> for an example).
+Everything upstream still works exactly as before, and the app is still a purely static, offline-capable PWA.
+The original README is kept as [README.upstream.md](README.upstream.md).
 
-It is a *purely static website*: once your browser downloads the files from the server (about 7 MB), it will run the OCaml code in its javascript engine, without sending anything to a distant server!
-Your data is secure, and this website does not use any third party service cookie :no_good_man: :cookie:.
+---
 
-Without installing any software on your laptop or smartphone, use [this web-based editor](https://jbdoderlein.github.io/BetterOCaml) to access to a complete OCaml REPL and text editor, with syntax highlighting, autocompletion, a full support of recent OCaml syntax and [the entire standard library](https://caml.inria.fr/pub/docs/manual-ocaml/libref/) (except for `Graphics`, `Unix` modules and `Sys.command` function), and multiple-files that you can save to or load from your computer.
+## Shortcuts
 
-## How to use ?
+| Shortcut | Action |
+|---|---|
+| `Ctrl+F` | Search — the bar stays open while you cycle through matches |
+| `Ctrl+G` / `Ctrl+Shift+G` | Find next / previous |
+| `Ctrl+H` | Replace |
+| `Ctrl+Shift+H` | Replace all |
+| `Alt+G` | Jump to line |
+| `Ctrl+Shift+E` | Explain the last error and propose a fix |
+| `Ctrl+I` | Ask about the current file or selection |
 
-![BetterOCaml usage gif](https://user-images.githubusercontent.com/10222041/117338097-75d6a880-ae9e-11eb-9a69-63c39bd8fd4a.gif)
+Upstream's `Ctrl+Enter` (run the phrase under the cursor), `Ctrl+Shift+Enter` (run everything),
+`Ctrl+Space` (autocomplete) and `Ctrl+S` (save) are unchanged.
 
-The editor is made of 3 parts, as seen in this screenshot:
-- ** Navbar ** : this is where you can switch between multiple files. You can add, execute, save, load code in the editor and access to settings;;
-- ** Editor** : you can type code here and execute with `Ctrl+Enter`. Each OCaml statement must be finished with `;;`, and [toplevel directives](https://caml.inria.fr/pub/docs/manual-ocaml/toplevel.html#s%3Atoplevel-directives) are *not* supported;
-- ** Output & Console** : this the output of OCaml, showing values and messages printed to `sdtout`, you can also type command here (after the `# ` sign), and type `Enter`.
+Inside the toplevel console `Ctrl+F` is deliberately left to the browser — that pane is plain text and the
+browser's own find is the better tool for it.
 
-### :art: Theme
+## The AI assistant
 
-You can choose the theme in the settings, in the top right corner. Your preference should be used the next time you come back on the editor.
-There are currently three themes (two dark themes, "default" and "Monokai", and a light one, "MDN").
+Free claude.ai and chatgpt.com have no API you can call without an account, and driving a logged-in session
+from a web page is both against their terms and blocked in practice. So GPTCaml does not pretend to call
+them: it does the two things around the model that are actually tedious.
 
-If you have any suggestion for a new theme, [open an issue](https://github.com/jbdoderlein/BetterOCaml/issues/new) :+1: !
+1. **It writes the prompt.** Click the 💡 in the nav bar (or press `Ctrl+Shift+E`, or the *Explain this
+   error* chip that appears when the toplevel prints an error) and GPTCaml assembles the OCaml version, the
+   file, the exact phrase you ran, and the verbatim error — with a request to explain the underlying rule,
+   not just hand back a patch.
+2. **It reads the answer.** *Open in Claude* / *Open in ChatGPT* copies the prompt to your clipboard and
+   opens a new tab. Paste the reply back into the panel and GPTCaml splits it into the explanation and the
+   corrected code, shows a line diff, and offers **Apply to the editor**.
 
-## :sparkles: Use offline?
-### :computer: On a laptop or desktop
-- If you visit [the editor](https://jbdoderlein.github.io/BetterOCaml) webpage using your favorite browser, and if it works fine, you can add the link to your :star: "favorites", and then later on, if you open the direct link, it should work and load back BetterOCaml... even if your browser is offline!
-- This can only work if you don't clean-up or delete the cache of your browser, but it should work even if you turn-off and turn-on again your laptop!
+Nothing is sent anywhere on its own, nothing is applied without the click, and one `Ctrl+Z` undoes an applied
+fix. There is no API key and no cost.
 
-- We [recently](https://github.com/jbdoderlein/BetterOCaml/issues/12) [added](https://github.com/jbdoderlein/BetterOCaml/issues/13) support for an [app manifest](https://github.com/jbdoderlein/BetterOCaml/blob/master/src/manifest.json) and [service workers](https://github.com/jbdoderlein/BetterOCaml/blob/master/src/serviceWorker.js), so this web app is now a *Progressive Web App* (PWA), which can be installed on your laptop and used later on, even if you're offline! After being intalled, the app should appear in your global application menu (it works on Chromium on both Windows and Ubuntu).
+### Adding an automatic backend
 
-> If you can't install it as a PWA, [@Naereen](https://GitHub.com/Naereen) recommends trying [WebCatalog](https://webcatalog.app/), a multi-platform desktop app (for \*NIX, Windows and Mac OS), and you can then use it to "install" [the BetterOCaml editor](https://jbdoderlein.github.io/BetterOCaml), along with its integrated OCaml interpreter (of course), as a "native" desktop app. It then appears in the menu of your system, and it works offline! See [this 1:30min tutorial in video](https://github.com/jbdoderlein/BetterOCaml/issues/6#issuecomment-780269129).
+`src/js/ai/ai_providers.js` is a registry of `{id, label, mode, send(prompt)}` objects. The two shipped
+providers have `mode: "handoff"`. A provider that returns the answer itself (a local Ollama, an API key)
+only has to resolve `send()` with the text — the panel, the prompt builder and the diff do not change.
 
-### :phone: On a smartphone
-- It also works fine on smartphone running any recent OS and browser, :ok_hand: and the app should be "responsive" and you can switch to a vertical layout in the settings if your screen is too narrow.
-- Loading the OCaml toplevel can take a few seconds on a mobile 3G/4G or :snail: slow Wifi networks: it's over 30 Mb, as it includes all of [OCaml standard library](https://caml.inria.fr/pub/docs/manual-ocaml/libref/)!
-- The *Progressive Web App* can be installed on your smartphone: there should be a small + button near the address bar, or a "Install it" option in the menu. Once you install it, there should be an icon in the home screen (but not in the app menu) that launches the app in full size mode (like a browser, but no address bar). It [works fine](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Developer_guide/Installing#what_browsers_support_installation) on Chrom(e|ium) and Firefox mobile on Android, at least.
-- If you think that this is not enough, and that the website should be bundled as a native iOS/Android app, please vote :+1: on [this issue](https://github.com/jbdoderlein/BetterOCaml/issues/14).
+## Files added or changed
 
-## :zap: PWA
+| File | What |
+|---|---|
+| `src/js/editor_change.js` | `Ctrl+F` / `Ctrl+H` / `Ctrl+Shift+H` and the two AI bindings added to the CodeMirror keymap |
+| `src/js/shortcuts.js` | routes `Ctrl+F` / `Ctrl+H` to the editor when focus is elsewhere on the page |
+| `src/js/ai/ai_context.js` | watches `#output` and reconstructs the last error with the phrase that caused it |
+| `src/js/ai/ai_prompt.js` | builds the prompt, parses the answer back into explanation + code |
+| `src/js/ai/ai_providers.js` | Claude / ChatGPT hand-off, clipboard with a non-secure-origin fallback |
+| `src/js/ai/ai_diff.js` | LCS line diff, no dependency |
+| `src/js/ai/ai_panel.js` | the panel, and the apply-in-one-undo-step logic |
+| `src/css/ai.css` | panel styling |
+| `src/css/index.css` | search dialog styling (Materialize was overriding CodeMirror's dialog input) |
+| `src/serviceWorker.js` | the precache list referenced four files that no longer exist, and `cache.addAll` is all-or-nothing, so the install always failed and nothing was ever precached |
 
-BetterOCaml is a fully installable Progressive Web App
+## Running it
 
-[![pwa performance](https://betterocaml.ml/pwa_performance_2503.svg)](https://pagespeed-insights.herokuapp.com/?url=https://betterocaml.ml)
+It is a static site — serve `src/` with anything:
 
-## OCaml version
+```bash
+python -m http.server 8000 --directory src
+```
 
-You can change the OCaml version with the url : `https://link-to-betterocaml/?version=4.11.0`
+Then open <http://localhost:8000/?version=5.3.0>. Service workers need `http://localhost` or HTTPS, not
+`file://`.
 
-<https://jbdoderlein.github.io/BetterOCaml> offers `5.3.0`, and `4.14.1`
+## Credits and license
 
-You can also compile the toplevel with any version you want using [the compilation script](https://github.com/jbdoderlein/BetterOCaml/blob/master/toplevel_build/BUILD.md#how-to-build-the-betterocaml-toplevel).
+GPTCaml is a fork of [BetterOCaml](https://github.com/jbdoderlein/BetterOCaml) by
+[@jbdoderlein](https://github.com/jbdoderlein) and its
+[contributors](https://github.com/jbdoderlein/BetterOCaml/graphs/contributors), which is built on
+[js_of_ocaml](https://ocsigen.org/js_of_ocaml/latest/manual/overview), [CodeMirror](https://codemirror.net/)
+and [Materialize](https://materializecss.com/).
 
-*The dune configuration is now modified to work with Dune>3.0 and Ocaml 5.0, to compile for OCaml<5.0, use [this commit](https://github.com/jbdoderlein/BetterOCaml/commit/7e3f428305a3410d0212c1dbe15610170d9f76ed)*
-
-## Loading a File from a URL
-
-You can load a remote file from a URL using the `load` parameter:  
-`https://link-to-betterocaml/?load=url-to-file`
-
-For example:  
-`https://jbdoderlein.github.io/BetterOCaml/?load=https://jbdoderlein.github.io/BetterOCaml/example.ml`  
-This will start BetterOCaml and load [this file](https://github.com/jbdoderlein/BetterOCaml/blob/master/src/example.ml).
-
-:warning: **The web server hosting the file must allow [CORS](https://developer.mozilla.org/docs/Glossary/CORS)**.  
-The server must include the `Access-Control-Allow-Origin` header to enable BetterOCaml to fetch the file.
-
-If the resource is hosted on the same domain as BetterOCaml, you don’t need the CORS header.
-
-> GitHub's raw source code URLs support CORS. For example:  
-> [Raw URL](https://raw.githubusercontent.com/jbdoderlein/BetterOCaml/refs/heads/master/src/example.ml) for [this file](https://github.com/jbdoderlein/BetterOCaml/blob/master/src/example.ml).
-
-
-### Bypassing CORS
-
-If you don’t have control over the server's CORS settings, you can use a CORS proxy. Several public CORS proxies are available, such as [corsproxy.io](https://corsproxy.io).
-
-For example, the URL above becomes:  
-`https://jbdoderlein.github.io/BetterOCaml/?load=https://corsproxy.io/?url=https://jbdoderlein.github.io/BetterOCaml/example.ml`
-
-##  About this project
-
-### :hammer_and_wrench: Dependencies
-BetterOCaml is made with these open-source tools:
-- [js_of_ocaml](https://ocsigen.org/js_of_ocaml/3.7.0/manual/overview) v3.7.0 : compile the OCaml toplevel to javascript;
-- [Materialize](https://materializecss.com/) : CSS and javascript framework;
-- [Codemirror](https://codemirror.net/) : javascript code editor.
-
-### Contributing?
-Pull requests are welcome. For major changes, please [open an issue first](https://github.com/jbdoderlein/BetterOCaml/issues/new) to discuss what you would like to change.
-
-### :sos: Need help?
-If something is wrong or if you encounter any issue when using BetterOCaml, please [open an issue first](https://github.com/jbdoderlein/BetterOCaml/issues/new) (you have [to create a GitHub account](https://github.com/join) first).
-
-### :scroll: License
-This project is released publicly under the terms of the [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) license.
-
-### Authors
-This project was initiated and is maintained by [@jbdoderlein](https://github.com/jbdoderlein/), with help and contributions from a few [other people](https://github.com/jbdoderlein/BetterOCaml/graphs/contributors).
-
+Released, like upstream, under the [Apache 2.0](LICENSE) license. The files listed in the table above have
+been modified or added relative to upstream.

@@ -662,6 +662,17 @@ function create_editor(id, name) {
             "Ctrl-Space": "autocomplete",
             "Cmd-Space": "autocomplete",
             "Alt-F": "findPersistent",
+            // GPTCaml: standard search / replace shortcuts
+            "Ctrl-F": "findPersistent",
+            "Cmd-F": "findPersistent",
+            "Ctrl-H": "replace",
+            "Shift-Ctrl-H": "replaceAll",
+            "Cmd-Alt-F": "replace",
+            // GPTCaml: AI assistant
+            "Shift-Ctrl-E": function (cm) { ai_explain_last_error(cm); },
+            "Shift-Cmd-E": function (cm) { ai_explain_last_error(cm); },
+            "Ctrl-I": function (cm) { ai_ask_about_selection(cm); },
+            "Cmd-I": function (cm) { ai_ask_about_selection(cm); },
             "Ctrl-S": save,
             "Cmd-S": save,
             "Backspace": function (cm) { // If 2 space behind, delete 2 space

@@ -1,6 +1,6 @@
 {
-  "short_name": "BetterOCaml",
-  "name": "BetterOCaml, offline OCaml IDE",
+  "short_name": "GPTCaml",
+  "name": "GPTCaml, offline OCaml IDE with an AI assistant",
   "icons": [
     {
       "src": "icon/android-icon-192x192.png",
@@ -13,5 +13,5 @@
   "display": "standalone",
   "scope": "/index.html",
   "theme_color": "#263238",
-  "description": "A small but efficient, intuitive and responsive OCaml IDE right in your browser! Ships OCaml v5.1.1, interpreter by your browser (so it works offline!), compiled with js_of_ocaml. Open-source on <a href='https://github.com/jbdoderlein/BetterOCaml'>GitHub.com/jbdoderlein/BetterOCaml</a>"
+  "description": "GPTCaml is a fork of BetterOCaml: an OCaml IDE in your browser (interpreter compiled with js_of_ocaml, works offline), with standard Ctrl+F / Ctrl+H search shortcuts and an AI assistant that explains and fixes toplevel errors. Upstream: <a href='https://github.com/jbdoderlein/BetterOCaml'>GitHub.com/jbdoderlein/BetterOCaml</a>"
 }

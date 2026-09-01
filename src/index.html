@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>BetterOCaml</title>
+    <title>GPTCaml</title>
     <meta name="description"
-          content="An efficient, intuitive and cross-platform web IDE for the OCaml language (recent: v4.14.0), with your code interpreted and running in your browser! (no server is needed!)">
+          content="GPTCaml - an efficient, cross-platform web IDE for OCaml, with your code interpreted in your browser (no server needed), standard search shortcuts and a built-in AI assistant for explaining and fixing errors.">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="manifest.json">
@@ -30,6 +30,7 @@
     <link rel="stylesheet" href="css/codemirror/dialog.css"/>
     <link rel="stylesheet" href="css/codemirror/show-hint.css"/>
     <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/ai.css">
     <script src="js/codemirror/codemirror.js"></script>
     <script src="js/codemirror/matchbrackets.min.js"></script>
     <script src="js/codemirror/closebrackets.js"></script>
@@ -70,9 +71,9 @@
 <!-- Loading screen -->
 <div id="loader-wrapper">
     <div id="loader" class="container">
-        <img alt="Betterocaml Splash" src="icon/banner.png">
+        <img alt="GPTCaml Splash" src="icon/banner.png">
         <h2 class="center white-text">Loading OCaml Interpreter</h2>
-        <p class="center white-text">BetterOCaml will be ready in a few seconds ...</p>
+        <p class="center white-text">GPTCaml will be ready in a few seconds ...</p>
         <div class="progress">
             <div class="indeterminate"></div>
         </div>
@@ -99,6 +100,8 @@
                     </label>
                 </a>
             </li>
+            <li><a id="ai-nav-button" title="Ask Claude or ChatGPT about your code (Ctrl+Shift+E)"
+                   onclick="ai_explain_last_error()"><i class="material-icons">lightbulb_outline</i></a></li>
             <li><a class="modal-trigger" href="#help"><i class="material-icons">settings</i></a></li>
         </ul>
     </div>
@@ -113,6 +116,13 @@
         </a>
     </li>
 </ul>
+
+<!-- GPTCaml: shown when the toplevel prints an error -->
+<div id="ai-error-chip" style="display: none;">
+    <a title="Explain this error and propose a fix">
+        <i class="material-icons">lightbulb_outline</i> Explain this error
+    </a>
+</div>
 
 <!-- Clean console button -->
 <div class="fixed-action-btn hide-on-small-and-down" style="bottom: 15px; right: 15px;">
@@ -195,11 +205,11 @@
         <a href="#graphics" class="waves-effect waves-light btn shortcut-button modal-trigger"><i
                     class="material-icons right">code</i>Graphics</a>
         <div class="help-section">
-            <a class="github-button" href="https://github.com/jbdo99/betterocaml" data-size="large"
-               aria-label="Issue jbdo99/betterocaml on GitHub">Open in Github</a>
-            <a class="github-button" href="https://github.com/jbdo99/betterocaml/issues"
+            <a class="github-button" href="https://github.com/jbdoderlein/BetterOCaml" data-size="large"
+               aria-label="jbdoderlein/BetterOCaml on GitHub">Upstream project</a>
+            <a class="github-button" href="https://github.com/jbdoderlein/BetterOCaml/issues"
                data-icon="octicon-issue-opened"
-               data-size="large" aria-label="Issue jbdo99/betterocaml on GitHub">Issue</a>
+               data-size="large" aria-label="Issue jbdoderlein/BetterOCaml on GitHub">Issue</a>
         </div>
     </div>
     <div class="modal-footer help">
@@ -232,7 +242,7 @@
         <h5>Search / Replace</h5>
         <div class="help-section">
             <blockquote class="commands">
-                <div class="shortcut-command ctrl"> + F </div> : Start searching
+                <div class="shortcut-command ctrl"> + F </div> : Search (stays open while you cycle matches)
             </blockquote>
             <blockquote class="commands">
                 <div class="shortcut-command ctrl"> + G </div> : Find next
@@ -241,18 +251,81 @@
                 <div class="shortcut-command ctrl"> + Shift + G </div> : Find previous
             </blockquote>
             <blockquote class="commands">
-                <div class="shortcut-command ctrl"> + Shift + F </div> : Replace
+                <div class="shortcut-command ctrl"> + H </div> : Replace
             </blockquote>
             <blockquote class="commands">
-                <div class="shortcut-command ctrl"> + Shift + R </div> : Replace all
-            </blockquote>
-            <blockquote class="commands">
-                <div class="shortcut-command">Alt + F </div> : Persistent search
+                <div class="shortcut-command ctrl"> + Shift + H </div> : Replace all
             </blockquote>
             <blockquote class="commands">
                 <div class="shortcut-command">Alt + G </div> : Jump to line
             </blockquote>
         </div>
+        <h5>AI assistant</h5>
+        <div class="help-section">
+            <blockquote class="commands">
+                <div class="shortcut-command ctrl"> + Shift + E </div> : Explain the last error and propose a fix
+            </blockquote>
+            <blockquote class="commands">
+                <div class="shortcut-command ctrl"> + I </div> : Ask about the current file or selection
+            </blockquote>
+        </div>
+    </div>
+    <div class="modal-footer help">
+        <a href="#" class="modal-close waves-effect waves-green btn-flat white-text">Close</a>
+    </div>
+</div>
+
+<!-- GPTCaml: AI assistant modal -->
+<div id="ai-modal" class="modal help">
+    <div class="modal-content">
+        <h4>AI assistant <small id="ai-intent-label" class="ai-hint"></small></h4>
+
+        <div class="ai-section">
+            <div class="ai-actions">
+                <a class="waves-effect waves-light btn" onclick="GPTCAML.ai.open('explain')">Explain last error</a>
+                <a class="waves-effect waves-light btn" onclick="GPTCAML.ai.open('fix')">Fix last error</a>
+                <a class="waves-effect waves-light btn" onclick="GPTCAML.ai.open('ask')">Ask about my code</a>
+            </div>
+            <div class="input-field" style="display: none;">
+                <input id="ai-question" type="text" placeholder="What do you want to ask about this code?">
+            </div>
+        </div>
+
+        <div class="ai-section">
+            <h5>1. Send this to the assistant</h5>
+            <p class="ai-hint">Your code, the phrase you ran and the exact toplevel error, with a request to
+                explain <em>why</em> it is an error and return the corrected file.</p>
+            <textarea id="ai-prompt" readonly></textarea>
+            <div class="ai-actions">
+                <a id="ai-copy" class="waves-effect waves-light btn"><i class="material-icons left">content_copy</i>Copy prompt</a>
+                <a id="ai-open-claude" class="waves-effect waves-light btn">Open in Claude</a>
+                <a id="ai-open-chatgpt" class="waves-effect waves-light btn">Open in ChatGPT</a>
+            </div>
+            <div id="ai-status" class="ai-status"></div>
+        </div>
+
+        <div class="ai-section">
+            <h5>2. Paste the answer back</h5>
+            <p class="ai-hint">Paste the whole reply - GPTCaml splits the explanation from the corrected code.</p>
+            <textarea id="ai-answer" placeholder="Paste the assistant's answer here (Ctrl+V)"></textarea>
+            <div class="ai-actions">
+                <a id="ai-parse" class="waves-effect waves-light btn">Read the answer</a>
+            </div>
+        </div>
+
+        <div id="ai-result" class="ai-section" style="display: none;">
+            <h5>3. Review</h5>
+            <div id="ai-explanation"></div>
+            <div id="ai-diff"></div>
+            <div class="ai-actions">
+                <a id="ai-apply" class="waves-effect waves-light btn">Apply to the editor</a>
+                <a href="#" class="modal-close waves-effect waves-light btn-flat white-text">Discard</a>
+            </div>
+        </div>
+
+        <p class="ai-privacy">Nothing is sent automatically. The prompt above contains your code and goes
+            through your clipboard to claude.ai or chatgpt.com when you click one of those buttons.
+            Applying a fix replaces the current file - one Ctrl+Z undoes it.</p>
     </div>
     <div class="modal-footer help">
         <a href="#" class="modal-close waves-effect waves-green btn-flat white-text">Close</a>
@@ -311,6 +384,12 @@
 <script type="text/javascript" src="js/jquery.min.js"></script>
 <script src="js/materialize.min.js"></script>
 <script src="js/editor_change.js"></script>
+<script src="js/shortcuts.js"></script>
+<script src="js/ai/ai_context.js"></script>
+<script src="js/ai/ai_prompt.js"></script>
+<script src="js/ai/ai_providers.js"></script>
+<script src="js/ai/ai_diff.js"></script>
+<script src="js/ai/ai_panel.js"></script>
 <script type="text/javascript">
     // Loading global var
     init_local_storage();

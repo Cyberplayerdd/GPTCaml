@@ -745,3 +745,51 @@ label {
     text-decoration: underline;
     color: var(--code-brackets) !important
 }
+
+/* GPTCaml - search / replace dialog (Ctrl+F, Ctrl+H).
+   Materialize styles every bare <input> on the page (3rem tall, its own
+   border and focus shadow), which wrecks CodeMirror's one-line dialog.
+   Reset it back to something that fits inside the editor. */
+
+.CodeMirror-dialog {
+    background: var(--editor-bg-color) !important;
+    color: var(--ui-text-color);
+    border-color: var(--help-margin-color) !important;
+    padding: .35em .8em;
+    font-size: .8em;
+}
+
+.CodeMirror-dialog input[type=text],
+.CodeMirror-dialog input:not([type]) {
+    height: 1.6em !important;
+    width: 18em;
+    margin: 0 .4em 0 0 !important;
+    padding: 0 !important;
+    box-sizing: content-box !important;
+    border: none !important;
+    border-bottom: 1px solid var(--help-margin-color) !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    color: var(--ui-text-color) !important;
+    font-family: monospace;
+    font-size: 1em;
+}
+
+.CodeMirror-dialog button {
+    color: var(--ui-text-color);
+    background: var(--action-button);
+    border: none;
+    border-radius: 2px;
+    padding: .1em .6em;
+    margin-left: .4em;
+    cursor: pointer;
+}
+
+.CodeMirror-search-hint {
+    color: var(--nav-unselected-tab-text-color);
+}
+
+.cm-searching {
+    background: var(--editor-code-highlight-color);
+    outline: 1px solid var(--code-constant);
+}
